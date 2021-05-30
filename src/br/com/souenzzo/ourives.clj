@@ -112,7 +112,7 @@
                     (seq headers) (assoc :ring.request/headers headers)
                     server-name (assoc :ring.request/server-name server-name)
                     query (assoc :ring.request/query query))
-          {:ring.response/keys [body headers status]
+          {:ring.response/keys [headers status]
            :as                 response} (handler request)]
       (.write out (.getBytes (str "HTTP/1.1 "
                                status
@@ -133,9 +133,9 @@
   ;; This will start an server that handle a single request, then stop
   ;; useful to develop/debug
   (with-open [server-socket (java.net.ServerSocket. 8080)
-              client (.accept server-socket)]
+              socket (.accept server-socket)]
     (handle-socket
-      {::client  client
+      {::socket  socket
        ::handler (fn [req]
                    (def _req req)
                    {:ring.response/body    "world!"

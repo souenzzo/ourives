@@ -1,5 +1,6 @@
 (ns br.com.souenzzo.ourives
   (:require [clojure.string :as string]
+            [br.com.souenzzo.ourives.io :as oio]
             [ring.response])
   (:import (java.io InputStream)
            (java.net URI Socket)
@@ -62,37 +63,6 @@
    504 "Gateway Timeout"
    505 "HTTP Version Not Supported"})
 
-(defn ^String is-read-line
-  [^InputStream is]
-  (loop [sb (StringBuffer.)]
-    (let [c (.read is)]
-      (case c
-        10 (str sb)
-        13 (recur sb)
-        (recur (.append sb (char c)))))))
-
-(defn bounded-input-stream
-  [^InputStream is n]
-  (let [*n (atom n)]
-    (letfn [(real-len! [len]
-              (apply - (swap-vals! *n (fn [n]
-                                        (if (< n len)
-                                          0
-                                          (- n len))))))]
-      (proxy [InputStream] []
-        (read
-          ([]
-           (locking is
-             (if (pos? (real-len! 1))
-               (.read is)
-               -1)))
-          ([buffer off len]
-           (locking is
-             (let [real-len (real-len! len)]
-               (if (pos? real-len)
-                 (.read is buffer off real-len)
-                 -1)))))))))
-
 (defn handle-socket
   [{::keys [^Socket socket handler]
     :as    m}]
@@ -100,14 +70,14 @@
               out (.getOutputStream socket)]
     (let [remote-addr (.getHostAddress (.getLocalAddress socket))
           server-port (.getLocalPort socket)
-          req-line (is-read-line body)
+          req-line (oio/is-read-line body)
           s1 (.indexOf req-line 32)
           s2 (.lastIndexOf req-line 32)
           method (subs req-line 0 s1)
           path (subs req-line (inc s1) s2)
           version (subs req-line (inc s2) (count req-line))
           headers (loop [acc {}]
-                    (let [line (is-read-line body)]
+                    (let [line (oio/is-read-line body)]
                       (if (empty? line)
                         acc
                         (recur (let [[k v] (string/split line #":\s{0,}" 2)
@@ -136,7 +106,7 @@
                             :ring.request/remote-addr remote-addr
                             :ring.request/scheme :http
                             :ring.request/body (if content-length
-                                                 (bounded-input-stream body content-length)
+                                                 (oio/bounded-input-stream body content-length)
                                                  body)
                             :ring.request/protocol version)
                     (seq headers) (assoc :ring.request/headers headers)

@@ -13,7 +13,7 @@ This is an *Work In Progress* pure-clojure implementation of a HTTP server follo
 # Design issues
 
 - How to handle bodies
-
+- Handle chunked
 
 # Current State 
 

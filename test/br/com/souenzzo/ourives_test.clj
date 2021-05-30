@@ -58,7 +58,7 @@
                                          "host"           (str "localhost:" server-port)
                                          "http2-settings" "AAEAAEAAAAIAAAABAAMAAABkAAQBAAAAAAUAAEAA"
                                          "upgrade"        "h2c"
-                                         "user-agent"     "Java-http-/16.0.1"}
+                                         "user-agent"     "Java-http-client/16.0.1"}
               :ring.request/method      :post
               :ring.request/path        "/path"
               :ring.request/query       "query=123"

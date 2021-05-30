@@ -1,7 +1,6 @@
 (ns br.com.souenzzo.ourives
   (:require [clojure.string :as string]
-            [ring.core.protocols :as ring.proto]
-            [clojure.java.io :as io])
+            [ring.response])
   (:import (java.io InputStream)
            (java.net URI Socket)
            (java.nio.charset StandardCharsets)))
@@ -73,20 +72,32 @@
         (recur (.append sb (char c)))))))
 
 (defn bounded-input-stream
-  "Worst impl ever!"
   [^InputStream is n]
-  (let [*x (atom n)]
-    (proxy [InputStream] []
-      (read [buffer start end]
-        (if (neg? (swap! *x dec))
-          -1
-          (.read is buffer 0 1))))))
+  (let [*n (atom n)]
+    (letfn [(real-len! [len]
+              (apply - (swap-vals! *n (fn [n]
+                                        (if (< n len)
+                                          0
+                                          (- n len))))))]
+      (proxy [InputStream] []
+        (read
+          ([]
+           (locking is
+             (if (pos? (real-len! 1))
+               (.read is)
+               -1)))
+          ([buffer off len]
+           (locking is
+             (let [real-len (real-len! len)]
+               (if (pos? real-len)
+                 (.read is buffer off real-len)
+                 -1)))))))))
 
 (defn handle-socket
   [{::keys [^Socket socket handler]
     :as    m}]
-  (with-open [body (io/input-stream socket)
-              out (io/output-stream socket)]
+  (with-open [body (.getInputStream socket)
+              out (.getOutputStream socket)]
     (let [remote-addr (.getHostAddress (.getLocalAddress socket))
           server-port (.getLocalPort socket)
           req-line (is-read-line body)
@@ -101,7 +112,7 @@
                         acc
                         (recur (let [[k v] (string/split line #":\s{0,}" 2)
                                      k (string/lower-case k)
-                                     sep (if (= "cookie" line)
+                                     sep (if (= "cookie" k)
                                            ";"
                                            ",")]
                                  (update acc k #(if %
@@ -146,7 +157,7 @@
         (.write out (.getBytes (str k ": " v "\r\n")
                       StandardCharsets/UTF_8)))
       (.write out (.getBytes "\r\n" StandardCharsets/UTF_8))
-      (ring.proto/write-body-to-stream body response out))))
+      (ring.response/write-body-to-stream response out))))
 
 (comment
   ;; This will start an server that handle a single request, then stop

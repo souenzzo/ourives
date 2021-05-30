@@ -1,0 +1,3 @@
+[submodule "ring"]
+	path = ring
+	url = git@github.com:ring-clojure/ring.git

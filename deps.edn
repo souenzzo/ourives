@@ -1,5 +1,7 @@
 {:deps    {ring/ring-core {:mvn/version "1.9.2"}}
- :aliases {:dev {:extra-paths ["dev" "test"]
-                 :extra-deps  {midje/midje            {:mvn/version "1.9.9"}
-                               org.clojure/clojure    {:mvn/version "1.10.3"}
-                               org.clojure/test.check {:mvn/version "1.1.0"}}}}}
+ :aliases {:dev {:extra-paths ["dev" "test"
+                               "ring/ring-core/src"]
+                 :extra-deps  {midje/midje                              {:mvn/version "1.9.9"}
+                               org.clojure/clojure                      {:mvn/version "1.10.3"}
+                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}
+                               org.clojure/test.check                   {:mvn/version "1.1.0"}}}}}

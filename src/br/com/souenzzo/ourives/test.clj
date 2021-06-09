@@ -1,7 +1,8 @@
 (ns br.com.souenzzo.ourives.test
   (:require [br.com.souenzzo.ourives :as ourives]
             [clojure.string :as string]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [br.com.souenzzo.ourives.io :as oio])
   (:import (java.net Socket URI)
            (java.io ByteArrayOutputStream InputStream SequenceInputStream StringWriter)
            (java.nio.charset StandardCharsets)
@@ -91,10 +92,10 @@
 
 (defn http-response-for
   [^InputStream is ^HttpResponse$BodyHandler body-handler]
-  (let [[_ version status-str] (re-find #"([^\s]+)\s([0-9]+)" (ourives/is-read-line is))
+  (let [[_ version status-str] (re-find #"([^\s]+)\s([0-9]+)" (oio/is-read-line is))
         status (Long/parseLong status-str)
         headers (loop [acc {}]
-                  (let [line (ourives/is-read-line is)]
+                  (let [line (oio/is-read-line is)]
                     (if (empty? line)
                       (HttpHeaders/of acc
                         (reify BiPredicate

@@ -4,4 +4,8 @@
                  :extra-deps  {midje/midje                              {:mvn/version "1.9.9"}
                                org.clojure/clojure                      {:mvn/version "1.10.3"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}
+                               io.pedestal/pedestal.service             {:mvn/version "0.5.9"}
+                               io.pedestal/pedestal.jetty               {:mvn/version "0.5.9"}
+                               org.slf4j/slf4j-simple                   {:mvn/version "2.0.0-alpha1"}
+
                                org.clojure/test.check                   {:mvn/version "1.1.0"}}}}}

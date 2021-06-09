@@ -2,8 +2,7 @@
   (:require [clojure.string :as string]
             [br.com.souenzzo.ourives.io :as oio]
             [ring.response])
-  (:import (java.io InputStream)
-           (java.net URI Socket)
+  (:import (java.net URI Socket)
            (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)

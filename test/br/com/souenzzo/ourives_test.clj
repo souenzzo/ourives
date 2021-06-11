@@ -57,6 +57,7 @@
 (deftest hello-pedestal
   (let [uri (URI/create (str "http://localhost:8080/foo/123?foo=42"))
         stdreq (-> (HttpRequest/newBuilder uri)
+                 (.header "Content-Type" "text/plain; chartset=UTF-8")
                  (.POST (HttpRequest$BodyPublishers/ofString
                           "bodies"))
                  (.build))
@@ -106,9 +107,11 @@
       "jetty request"
       (select-keys jetty-req req-ks)
       => {:async-supported? true
+          :content-type     "text/plain; chartset=UTF-8"
           :content-length   6
           :context-path     ""
           :headers          {"connection"     "Upgrade, HTTP2-Settings"
+                             "content-type"   "text/plain; chartset=UTF-8"
                              "user-agent"     "Java-http-client/16.0.1"
                              "host"           "localhost:8080"
                              "http2-settings" "AAEAAEAAAAIAAAABAAMAAABkAAQBAAAAAAUAAEAA"
@@ -131,8 +134,10 @@
       (select-keys req req-ks)
       => {:async-supported? false
           :content-length   6
+          :content-type     "text/plain; chartset=UTF-8"
           :context-path     ""
           :headers          {"connection"     "Upgrade, HTTP2-Settings"
+                             "content-type"   "text/plain; chartset=UTF-8"
                              "user-agent"     "Java-http-client/16.0.1"
                              "host"           "localhost:8080"
                              "http2-settings" "AAEAAEAAAAIAAAABAAMAAABkAAQBAAAAAAUAAEAA"

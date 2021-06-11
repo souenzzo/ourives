@@ -37,8 +37,7 @@
         content-type (some->> headers-seq
                        (filter (comp #{"Content-Type"} first))
                        first
-                       last
-                       Long/parseLong)
+                       last)
         charset (some-> content-type
                   (string/split #";\{0,}" 2)
                   (->> (map #(string/split % #"=" 2))

@@ -118,7 +118,7 @@
         (.flush out)))))
 
 (defn type
-  [{::http/keys [^Servlet servlet]
+  [{::http/keys [^Servlet servlet service-fn]
     :as         service-map}
    {:keys [port host]}]
   (let [*server (atom nil)]
@@ -135,7 +135,7 @@
                                 (with-open [socket (.accept server-socket)
                                             req (socket->http-servlet-request socket)
                                             res (socket->http-servlet-response socket)]
-                                  (.service servlet req res))
+                                  (service-fn servlet req res))
                                 (recur))
                               (catch SocketException _)
                               (catch Throwable ex

@@ -1,12 +1,16 @@
 (ns br.com.souenzzo.ourives-test
   (:require [clojure.test :refer [deftest]]
             [br.com.souenzzo.ourives :as ourives]
+            [br.com.souenzzo.ourives.client :as client]
+            [br.com.souenzzo.ourives.client.java-http]
+            [br.com.souenzzo.ourives.client.pedestal :as ocp]
             [br.com.souenzzo.ourives.easy :as ourives.easy]
             [io.pedestal.http :as http]
             [midje.sweet :refer [fact =>]]
             [br.com.souenzzo.ourives.test :refer [response-for http-client]]
             [br.com.souenzzo.ourives.pedestal :as ourives.pedestal]
-            [ring.util.mime-type :as mime])
+            [ring.util.mime-type :as mime]
+            [clojure.java.io :as io])
   (:import (java.net URI)
            (java.net.http HttpClient HttpRequest HttpResponse$BodyHandlers HttpRequest$BodyPublishers)
            (java.lang AutoCloseable)
@@ -53,6 +57,139 @@
                           (.map (.headers response)))
                :body    (.body response)
                :status  (.statusCode response)}}))))
+
+
+(deftest hello-jetty
+  (let [*req (promise)]
+    (with-open [server (-> {::http/type   :jetty
+                            ::http/routes #{["/foo/:id" :post (fn [{:keys [body]
+                                                                    :as   req}]
+                                                                (deliver *req req)
+                                                                {:headers {"Other"        "one"
+                                                                           "Content-Type" (mime/default-mime-types "edn")}
+                                                                 :body    (pr-str {:hello (slurp body)})
+                                                                 :status  200})
+                                             :route-name :hello]}
+                            ::http/join?  false
+                            ::http/port   8080}
+                         http/default-interceptors
+                         run-server)]
+      (let [res (client/send (HttpClient/newHttpClient)
+                  {:scheme         :http
+                   :server-name    "localhost"
+                   :query-string   "foo=42"
+                   :headers        {"Content-Type" "text/plain; chartset=UTF-8"}
+                   :uri            "/foo/123"
+                   :request-method :post
+                   :body           (io/input-stream (.getBytes "bodies"))
+                   :server-port    8080})
+            req-ks [:async-supported? :character-encoding :content-length :content-type :context-path :headers
+                    :params :path-info :path-params :protocol :query-params :query-string :remote-addr
+                    :request-method :scheme :server-name :server-port :uri
+                    #_:servlet-response #_:servlet #_:body #_:servlet-request #_:url-for]]
+        (fact
+          "jetty response"
+          (update res :headers dissoc "date")
+          => {:body    "{:hello \"bodies\"}"
+              :headers {"content-security-policy"           "object-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'strict-dynamic' https: http:;"
+                        "content-type"                      "application/edn"
+                        ;; "date"                              "Fri, 11 Jun 2021 03:32:49 GMT"
+                        "other"                             "one"
+                        "strict-transport-security"         "max-age=31536000; includeSubdomains"
+                        "transfer-encoding"                 "chunked"
+                        "x-content-type-options"            "nosniff"
+                        "x-download-options"                "noopen"
+                        "x-frame-options"                   "DENY"
+                        "x-permitted-cross-domain-policies" "none"
+                        "x-xss-protection"                  "1; mode=block"}
+              :status  200})
+        (fact
+          "jetty request"
+          (select-keys @*req req-ks)
+          => {:async-supported? true
+              :content-type     "text/plain; chartset=UTF-8"
+              :context-path     ""
+              :headers          {"content-type"      "text/plain; chartset=UTF-8"
+                                 "user-agent"        "Java-http-client/16.0.1"
+                                 "host"              "localhost:8080"
+                                 "transfer-encoding" "chunked"}
+              :params           {:foo "42"}
+              :path-info        "/foo/123"
+              :path-params      {:id "123"}
+              :protocol         "HTTP/1.1"
+              :query-params     {:foo "42"}
+              :query-string     "foo=42"
+              :remote-addr      "127.0.0.1"
+              :request-method   :post
+              :scheme           :http
+              :server-name      "localhost"
+              :server-port      8080
+              :uri              "/foo/123"})))))
+
+
+
+(deftest hello-http-client-pedestal
+  (let [*req (promise)
+        client (-> {::http/type   :jetty
+                    ::http/routes #{["/foo/:id" :post (fn [{:keys [body]
+                                                            :as   req}]
+                                                        (deliver *req req)
+                                                        {:headers {"Other"        "one"
+                                                                   "Content-Type" (mime/default-mime-types "edn")}
+                                                         :body    (pr-str {:hello (slurp body)})
+                                                         :status  200})
+                                     :route-name :hello]}
+                    ::http/join?  false
+                    ::http/port   8080}
+                 http/default-interceptors
+                 ocp/client
+                 ::ocp/client)
+        res (client/send client
+              {:scheme         :http
+               :server-name    "localhost"
+               :query-string   "foo=42"
+               :headers        {"Content-Type" "text/plain; chartset=UTF-8"}
+               :uri            "/foo/123"
+               :request-method :post
+               :body           (io/input-stream (.getBytes "bodies"))
+               :server-port    8080})
+        req-ks [:async-supported? :character-encoding :content-length :content-type :context-path :headers
+                :params :path-info :path-params :protocol :query-params :query-string :remote-addr
+                :request-method :scheme :server-name :server-port :uri
+                #_:servlet-response #_:servlet #_:body #_:servlet-request #_:url-for]]
+    (fact
+      "response"
+      (update res :headers dissoc "date")
+      => {:body    "{:hello \"bodies\"}"
+          :headers {"Content-Security-Policy"           "object-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'strict-dynamic' https: http:;"
+                    "Content-Type"                      "application/edn"
+                    "Other"                             "one"
+                    "Strict-Transport-Security"         "max-age=31536000; includeSubdomains"
+                    "X-Content-Type-Options"            "nosniff"
+                    "X-Download-Options"                "noopen"
+                    "X-Frame-Options"                   "DENY"
+                    "X-Permitted-Cross-Domain-Policies" "none"
+                    "X-XSS-Protection"                  "1; mode=block"}
+          :status  200})
+    (fact
+      "request"
+      (select-keys @*req req-ks)
+      => {:async-supported? false
+          :context-path     ""
+          :headers          {"content-type" "text/plain; chartset=UTF-8"}
+          :params           {:foo "42"}
+          :path-info        "/foo/123"
+          :path-params      {:id "123"}
+          :protocol         nil
+          :query-params     {:foo "42"}
+          :query-string     "foo=42"
+          :remote-addr      nil
+          :request-method   :post
+          :scheme           :http
+          :server-name      "localhost"
+          :server-port      8080
+          :uri              "/foo/123"})))
+
 
 (deftest hello-pedestal
   (let [uri (URI/create (str "http://localhost:8080/foo/123?foo=42"))

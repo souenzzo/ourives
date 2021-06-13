@@ -64,7 +64,7 @@
   (let [{::http/keys [^Servlet servlet service-fn]
          :as         service-map} (http/create-servlet service-map)]
     (assoc service-map
-      ::client (reify client/IClient
+      ::client (reify client/RingClient
                  (send [this req]
                    (let [*res (atom {})]
                      (service-fn servlet

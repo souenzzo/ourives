@@ -12,9 +12,8 @@
 (set! *warn-on-reflection* true)
 
 (defn ring-request->http-request
-  [{:keys [server-name scheme server-port uri query-string request-method body headers protocol
-           ;; TODO: remote-addr
-           #_remote-addr]
+  [{:keys [body #_character-encoding #_content-length #_content-type headers protocol query-string #_remote-addr
+           request-method scheme server-name server-port #_ssl-client-cert uri]
     :or   {server-port    -1
            request-method :get}
     :as   ring-request}]

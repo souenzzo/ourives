@@ -33,6 +33,10 @@
                  (.read is buffer off real-len)
                  -1)))))))))
 
+(defn chunked-input-stream
+  [is]
+  is)
+
 (defn ^OutputStream chunked-output-stream
   [os]
   (let [baos (ByteArrayOutputStream.)]
@@ -46,3 +50,7 @@
         (.write os b off len)
         (.write os (.getBytes "\r\n"
                      StandardCharsets/UTF_8))))))
+
+(defn bounded-output-stream
+  [os n]
+  os)

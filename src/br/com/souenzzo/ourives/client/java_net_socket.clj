@@ -1,8 +1,7 @@
 (ns br.com.souenzzo.ourives.client.java-net-socket
   (:require [br.com.souenzzo.ourives.client :as client]
             [clojure.string :as string]
-            [br.com.souenzzo.ourives.io :as http.io]
-            [clojure.java.io :as io])
+            [br.com.souenzzo.ourives.java.io :as http.io])
   (:import (java.net Socket InetSocketAddress InetAddress)
            (java.nio.charset StandardCharsets)
            (java.io InputStream OutputStream)))
@@ -66,7 +65,7 @@
                       (into {} headers)
                       (recur (conj headers (string/split line #":\s{0,}" 2))))))]
     {:headers headers
-     :body    (slurp (if-let [n (get headers  "Content-Length")]
+     :body    (slurp (if-let [n (get headers "Content-Length")]
                        (http.io/bounded-input-stream in (Long/parseLong n))
                        (http.io/chunked-input-stream in)))
      :status  (Long/parseLong (str status))}))

@@ -2,7 +2,7 @@
 
 > forging the ring
 
-This is an *Work In Progress* pure-clojure implementation of a HTTP server following the ring2 spec.
+This is an *Work In Progress* pure-clojure implementation of a HTTP server following the ring spec.
 
 # Priorities
 
@@ -10,10 +10,18 @@ This is an *Work In Progress* pure-clojure implementation of a HTTP server follo
 - [ ] Make it right
 - [ ] Make it fast
 
-# Design issues
+# Planned structure and API's
 
-- How to handle bodies
-- Handle chunked
+## Packages 
+
+- `br.com.souenzzo.ourives/client` Ring HTTP Client protocol
+- `br.com.souenzzo.ourives/client.java-net-http` Client Protocol implementation via java.net.http
+- `br.com.souenzzo.ourives/client.java-net-socket` Client Protocol implementation via java.net.socket
+- `br.com.souenzzo.ourives/client.node` Client Protocol implementation via nodejs http package.
+- `br.com.souenzzo.ourives/pedestal` Pedestal integration tools
+- `br.com.souenzzo.ourives/server` Pure Clojure HTTP server over java.net.socket
+- `br.com.souenzzo.ourives/java.io` HTTP IO Utilities
+
 
 # Current State 
 

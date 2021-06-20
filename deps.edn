@@ -1,4 +1,5 @@
-{:deps    {ring/ring-core {:mvn/version "1.9.2"}}
+{:deps    {ring/ring-core                  {:mvn/version "1.9.2"}
+           br.com.souenzzo.ourives/java.io {:local/root "http.io"}}
  :aliases {:dev {:extra-paths ["dev" "test"
                                "ring/ring-core/src"]
                  :extra-deps  {midje/midje                              {:mvn/version "1.9.9"}

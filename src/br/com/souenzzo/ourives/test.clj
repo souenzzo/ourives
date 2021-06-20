@@ -2,7 +2,7 @@
   (:require [br.com.souenzzo.ourives :as ourives]
             [clojure.string :as string]
             [clojure.java.io :as io]
-            [br.com.souenzzo.ourives.io :as oio])
+            [br.com.souenzzo.ourives.java.io :as oio])
   (:import (java.net Socket URI)
            (java.io ByteArrayOutputStream InputStream SequenceInputStream StringWriter)
            (java.nio.charset StandardCharsets)

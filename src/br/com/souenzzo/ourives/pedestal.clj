@@ -5,7 +5,7 @@
             [io.pedestal.http :as http]
             [br.com.souenzzo.ourives :as ourives]
             [io.pedestal.log :as log]
-            [br.com.souenzzo.ourives.io :as oio])
+            [br.com.souenzzo.ourives.java.io :as oio])
   (:import (javax.servlet Servlet ServletConfig ServletInputStream ServletOutputStream)
            (java.net ServerSocket SocketException Socket)
            (java.lang AutoCloseable)

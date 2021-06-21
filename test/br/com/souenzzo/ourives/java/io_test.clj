@@ -3,7 +3,8 @@
             [br.com.souenzzo.ourives.java.io :as ojio]
             [clojure.java.io :as io]
             [midje.sweet :refer [fact =>]])
-  (:import (java.io ByteArrayOutputStream)))
+  (:import (java.io ByteArrayOutputStream)
+           (java.nio.charset StandardCharsets)))
 
 (deftest is-read-line
   (let [is (io/input-stream
@@ -29,10 +30,14 @@
 
 (deftest chunked-output-stream
   (let [baos (ByteArrayOutputStream.)]
+    (.write (ojio/chunked-output-stream baos)
+      (.getBytes "abc" StandardCharsets/UTF_8))
     (fact
-      (slurp (ojio/chunked-output-stream baos))
-      => "ab")
+      (pr-str (str baos))
+      => "\"3\\r\\nabc\\r\\n\"")
+    (.write (ojio/chunked-output-stream baos)
+      (.getBytes "abc" StandardCharsets/UTF_8)
+      0 1)
     (fact
-      (str baos)
-      => "c\nefg")))
-
+      (pr-str (str baos))
+      => "\"3\\r\\nabc\\r\\n1\\r\\na\\r\\n\"")))

@@ -74,9 +74,12 @@
     (close []
       (.write os (.getBytes "0\r\n\r\n"
                    StandardCharsets/UTF_8)))
-    (write [b off len]
-      (.write os (.getBytes (format "%H\r\n" len)
-                   StandardCharsets/UTF_8))
-      (.write os b off len)
-      (.write os (.getBytes "\r\n"
-                   StandardCharsets/UTF_8)))))
+    (write
+      ([b]
+       (.write this b 0 (count b)))
+      ([b off len]
+       (.write os (.getBytes (format "%H\r\n" len)
+                    StandardCharsets/UTF_8))
+       (.write os b off len)
+       (.write os (.getBytes "\r\n"
+                    StandardCharsets/UTF_8))))))

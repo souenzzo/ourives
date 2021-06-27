@@ -33,7 +33,7 @@
       (= protocol "HTTP/2") (.version HttpClient$Version/HTTP_2)
       :always .build)))
 
-(defn response->ring-response
+(defn http-response->ring-response
   [^HttpResponse response]
   {:status  (.statusCode response)
    :body    (.body response)
@@ -49,16 +49,18 @@
   (send [this ring-request]
     (let [request (ring-request->http-request ring-request)
           response (.send this request (HttpResponse$BodyHandlers/ofInputStream))]
-      (response->ring-response response)))
+      (http-response->ring-response response)))
   (-sendAsync [this ring-request]
     (let [request (ring-request->http-request ring-request)
           response (.sendAsync this request (HttpResponse$BodyHandlers/ofInputStream))]
       (.thenApply response (reify Function
                              (apply [this v]
-                               (response->ring-response v))))))
-  (send-async [this ring-request ex-handler]
-    (let [response ^CompletableFuture (client/-sendAsync this ring-request)
-          return (async/promise-chan)
+                               (http-response->ring-response v))))))
+  (send-async [this ring-request]
+    (let [ex-handler (::client/ex-handler ring-request client/default-ex-handler)
+          return (or (::client/return-chan ring-request)
+                   (async/promise-chan nil ex-handler))
+          response ^CompletableFuture (client/-sendAsync this ring-request)
           then-apply (reify Function
                        (apply [this v]
                          (if (nil? v)

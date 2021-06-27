@@ -10,7 +10,7 @@
            (java.nio.charset StandardCharsets)))
 (set! *warn-on-reflection* true)
 
-(defn ^HttpServletRequest ->http-servlet-request
+(defn ^HttpServletRequest ring-request->servlet-request
   "Keep in sync with
 
   io.pedestal.test/test-servlet-request
@@ -105,16 +105,15 @@
 (defn client
   [{::http/keys [^Servlet servlet service-fn]}]
   (reify client/RingClient
-    (send [this req]
+    (send [this ring-request]
       (let [*res (atom {})
-            servlet-request (->http-servlet-request req)]
+            servlet-request (ring-request->servlet-request ring-request)]
         (service-fn servlet
           servlet-request
           (->http-servlet-response *res))
         (when (.isAsyncStarted servlet-request)
           (-> servlet-request meta :completion deref))
         @*res))))
-
 
 (defn create-client
   [service-map]

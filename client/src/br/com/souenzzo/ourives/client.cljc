@@ -25,10 +25,17 @@
     "Like send, but returns a implementation-specific future.
 
     It can return a promise, callback function, or any other native async interface")
-  (send-async [this ring-request]
+  (send-async [this ring-request ex-handler]
     "Like send, but returns a clojure.core.async/promise-chan
 
     In case of exception, it should return the exception in the channel.
     In success case, should return the same as `send`.
     This one is usually implemented in terms of `-sendAsync`
+
+    ex-handler must be a fn of one argument -
+    if an exception occurs during transformation it will be called with
+    the Throwable as an argument, and any non-nil return value will be
+    placed in the channel.
+
+    The channel will be closed after the exception.
     "))

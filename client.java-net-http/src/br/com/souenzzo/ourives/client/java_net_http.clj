@@ -56,10 +56,17 @@
       (.thenApply response (reify Function
                              (apply [this v]
                                (response->ring-response v))))))
-  (send-async [this ring-request]
+  (send-async [this ring-request ex-handler]
     (let [response ^CompletableFuture (client/-sendAsync this ring-request)
-          return (async/promise-chan)]
-      (.thenApply response (reify Function
-                             (apply [this v]
-                               (async/put! return v))))
+          return (async/promise-chan)
+          then-apply (reify Function
+                       (apply [this v]
+                         (if (nil? v)
+                           (async/close! return)
+                           (async/put! return v))))]
+      (-> response
+        (.thenApply then-apply)
+        (.exceptionally (reify Function
+                          (apply [this ex]
+                            (.apply then-apply (ex-handler ex))))))
       return)))

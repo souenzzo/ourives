@@ -2,51 +2,120 @@
 
 > forging the ring
 
-This is an *Work In Progress* pure-clojure implementation of a HTTP server following the ring spec.
+This is an *Work In Progress* pure-clojure implementation of a HTTP client and server following the ring spec.
 
-# Planned structure and API's
+# HTTP Client API
 
-## Packages 
+The main client protocol is `br.com.souenzzo.ourives.client/RingClient`.
 
-- `br.com.souenzzo.ourives/client` Ring HTTP Client protocol
-- `br.com.souenzzo.ourives/client.java-net-http` Client Protocol implementation via java.net.http
-- `br.com.souenzzo.ourives/client.pedestal` Client Protocol implementation via pedestal service-fn
+This protocol can be extended by many HTTP Clients.
 
-# Current State 
+The current implementations are:
 
-- `br.com.souenzzo.ourives.test` should provide testing helpers, inspired by `io.pedestal.test` 
-- `br.com.souenzzo.ourives.easy` should provide an easy way to start an server  
-- Testing should have the same API as a "real" HTTP request
-- Should flow ring2 spec
-- Just blocking for now.
-- 2x slower then reitit
+## br.com.souenzzo.ourives/client.java-net-http
 
-# Simple test
+This one extend the JVM native `java.net.HttpClient`
 
-Applications that use ourives should be easy to test
+Usage example:
 
-Here an example of testing:
-
-```clojure 
-(defn app-handler
-  [{:ring.request/keys [path]}]
-  {:ring.response/body    (str "Hello from: " path)
-   :ring.response/headers {"X-Custom" "Value"}
-   :ring.response/status  200})
-
-(deftest simple-test
-  (fact
-    (response-for app-handler
-      #:ring.request{:method :get :path "/world"})
-    => {:ring.response/body    "Hello from: /world"
-        :ring.response/headers {"X-Custom" "Value"}
-        :ring.response/status  200}))
+```clojure
+#_(require '[br.com.souenzzo.ourives.client :as client]
+    ;; require just to extend the protocol
+    '[br.com.souenzzo.ourives.client.java-net-http])
+#_(import '(java.net HttpClient))
+(client/send (HttpClient/newHttpClient)
+  {:request-method :get
+   :scheme         :https
+   :server-name    "example.com"})
+#_#_=> {:status  200
+        :body    #object [InputStream]
+        :headers {"key" "value"}}
 ```
 
-Despite to look like a simple call function call, what actually happens is:
+## `br.com.souenzzo.ourives/client.pedestal`
 
-- The `#:ring.request{:method :get :path "/world"}` request will be converted into an `java.net.HttpRequest`
-- The `java.net.HttpRequest` will be serialized into a `java.net.Socket` with a `java.io.InputStream` 
-- The `java.net.Socket` will be parsed as a "real" request, writing into a `OutputStream`
-- This `OutputStream` will be parsed, turned into `java.net.HttpResponse`
-- `HttpResponse` will be converted into `ring response map`
+This one is a replacement for `io.pedestal.test`. You can turn your pedestal app into a client and run your tests on it.
+
+```clojure
+;; main namespace
+#_(require '[io.pedestal.http :as http])
+
+(def routes
+  #{["/" :get (fn [_]
+                {:status 202})
+     :route-name ::hello]})
+
+(def service-map
+  (-> {::http/routes routes}
+    http/default-interceptors))
+
+;; test namespace
+#_(require '[clojure.test :refer [deftest is]]
+    '[br.com.souenzzo.ourives.client :as client]
+    '[br.com.souenzzo.ourives.client.pedestal :as ocp])
+
+(deftest hello
+  (let [client (-> service-map
+                 http/create-servlet
+                 ocp/client)]
+    (client/send client
+      {:request-method :get
+       :uri            "/"})
+    => {:status 202}))
+```
+
+# Future plans
+
+## Clients
+
+- `br.com.souenzzo.ourives/client.java-net-socket`: A pure-clojure HTTP client from java.net.Socket's
+- `br.com.souenzzo.ourives/client.nodejs`: An implementation over `http` and `https` packages in nodejs.
+- `br.com.souenzzo.ourives/client.fetch`: An implementation over `window.fetch` browser API
+- `br.com.souenzzo.ourives/client.apache-http-client`: Why not?!
+
+Some implementations, like nodejs and browser, will not have the `send` sync method
+
+## Client Utils
+
+- `cookie-store`: A generic cookie store that will work with any client
+- `body-handlers`: A generic client-over-client implementation to handle body params and parse responses
+- `metrics`: A generic client-over-client impl to log/metrics
+
+## Server
+
+- `br.com.souenzzo.ourives/server.java-net-socket`: A pure-clojure HTTP server over java.net.Socket's
+- `br.com.souenzzo.ourives/server.pedestal`: An adapter of `server.java-net-socket` to pedestal.
+- `br.com.souenzzo.ourives/server.nodejs`: Why not an wrap over nodejs `https/http` packages
+
+## Common utils
+
+- `br.com.souenzzo.ourives/java.io`: Pure-clojure HTTP IO Components over Java IO interfaces.
+
+# Other ideias
+
+- Should be possible to implement a generic cookie-store over the protocol
+
+```clojure
+(-> client ;; any implementation: java, nodejs... 
+  ourives.cookie-store/with-cookie-store)
+```
+
+- Should be possible to implement a generic client-wide metrics/logs
+
+- Once every client flows ring spec and ring spec says that the response `:body` should satisfies
+  `ring.core.protocols/StreamableResponseBody` we can have a generic implementation that parse the `:body` into JSON or
+  a String
+
+```clojure
+(-> client
+  ourives.response/with-json-response)
+```
+
+- Same for request bodies
+
+# Community
+
+Interested in a maven release? In some planned/missing feature?  
+Feel free to open an Issue, do a PR or talk with me in any network.
+
+Know that there is ppl interested will make me more interested to work on this library 

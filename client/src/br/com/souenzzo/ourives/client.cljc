@@ -26,7 +26,7 @@
 
     It can return a promise, callback function, or any other native async interface")
   (send-async [this ring-request]
-    "Like send, but returns a clojure.core.async/promise
+    "Like send, but returns a clojure.core.async/promise-chan
 
     In case of exception, it should return the exception in the channel.
     In success case, should return the same as `send`.

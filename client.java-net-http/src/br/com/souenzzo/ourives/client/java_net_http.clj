@@ -13,9 +13,7 @@
 (defn ring-request->http-request
   [{:keys [body #_character-encoding #_content-length #_content-type headers protocol query-string #_remote-addr
            request-method scheme server-name server-port #_ssl-client-cert uri]
-    :or   {server-port    -1
-           request-method :get}
-    :as   ring-request}]
+    :or   {server-port -1}}]
   (let [scheme (name scheme)
         user-info nil
         fragment nil
@@ -50,11 +48,11 @@
   HttpClient
   (send [this ring-request]
     (let [request (ring-request->http-request ring-request)
-          response (.send this request (HttpResponse$BodyHandlers/ofString))]
+          response (.send this request (HttpResponse$BodyHandlers/ofInputStream))]
       (response->ring-response response)))
   (-sendAsync [this ring-request]
     (let [request (ring-request->http-request ring-request)
-          response (.sendAsync this request (HttpResponse$BodyHandlers/ofString))]
+          response (.sendAsync this request (HttpResponse$BodyHandlers/ofInputStream))]
       (.thenApply response (reify Function
                              (apply [this v]
                                (response->ring-response v))))))

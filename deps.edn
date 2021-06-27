@@ -1,7 +1,11 @@
-{:deps    {ring/ring-core                  {:mvn/version "1.9.2"}
-           br.com.souenzzo.ourives/java.io {:local/root "http.io"}}
+{:deps    {ring/ring-core                               {:mvn/version "1.9.2"}
+           br.com.souenzzo.ourives/java.io              {:local/root "java.io"}
+           br.com.souenzzo.ourives/client               {:local/root "client"}
+           br.com.souenzzo.ourives/client.java-net-http {:local/root "client.java-net-http"}
+           br.com.souenzzo.ourives/client.pedestal      {:local/root "client.pedestal"}}
  :aliases {:dev {:extra-paths ["dev" "test"
                                "ring/ring-core/src"]
+                 :jvm-opts    ["-XX:-OmitStackTraceInFastThrow"]
                  :extra-deps  {midje/midje                              {:mvn/version "1.9.9"}
                                org.clojure/clojure                      {:mvn/version "1.10.3"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}

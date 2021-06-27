@@ -1,8 +1,7 @@
-(ns br.com.souenzzo.ourives.client.java-http
+(ns br.com.souenzzo.ourives.client.java-net-http
   (:refer-clojure :exclude [send])
   (:require [br.com.souenzzo.ourives.client :as client]
             [clojure.string :as string]
-            [clojure.spec.alpha :as s]
             [clojure.core.async :as async])
   (:import (java.net.http HttpClient HttpResponse$BodyHandlers HttpRequest HttpRequest$BodyPublishers HttpClient$Version HttpResponse)
            (java.net URI)
@@ -17,10 +16,6 @@
     :or   {server-port    -1
            request-method :get}
     :as   ring-request}]
-  (when-not (s/valid? ::client/request ring-request)
-    (throw (ex-info "Missing"
-             (s/explain-data ::client/request ring-request))))
-
   (let [scheme (name scheme)
         user-info nil
         fragment nil
@@ -57,14 +52,14 @@
     (let [request (ring-request->http-request ring-request)
           response (.send this request (HttpResponse$BodyHandlers/ofString))]
       (response->ring-response response)))
-  (sendAsync [this ring-request]
+  (-sendAsync [this ring-request]
     (let [request (ring-request->http-request ring-request)
           response (.sendAsync this request (HttpResponse$BodyHandlers/ofString))]
       (.thenApply response (reify Function
                              (apply [this v]
                                (response->ring-response v))))))
   (send-async [this ring-request]
-    (let [response ^CompletableFuture (client/sendAsync this ring-request)
+    (let [response ^CompletableFuture (client/-sendAsync this ring-request)
           return (async/promise-chan)]
       (.thenApply response (reify Function
                              (apply [this v]

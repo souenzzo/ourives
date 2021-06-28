@@ -32,7 +32,7 @@ Usage example:
         :headers {"key" "value"}}
 ```
 
-## `br.com.souenzzo.ourives/client.pedestal`
+## br.com.souenzzo.ourives/client.pedestal
 
 This one is a replacement for `io.pedestal.test`. You can turn your pedestal app into a client and run your tests on it.
 
@@ -62,6 +62,34 @@ This one is a replacement for `io.pedestal.test`. You can turn your pedestal app
       {:request-method :get
        :uri            "/"})
     => {:status 202}))
+```
+
+## [WIP] br.com.souenzzo.ourives/json
+
+Handle JSON on both request/response. Should be possible to use on client and server.
+
+Usage example:
+
+```clojure
+#_(require '[br.com.souenzzo.ourives.client :as client]
+    ;; require just to extend the protocol
+    '[br.com.souenzzo.ourives.client.java-net-http]
+    '[br.com.souenzzo.ourives.json :as json])
+#_(import '(java.net HttpClient))
+(client/send (-> (HttpClient/newHttpClient)
+               ;; just compose a client with another
+               (json/client {;; where the JSON will be on request
+                             ::json/source ::value
+                             ;; where it should be placed on response
+                             ::json/target ::value}))
+  {:request-method :get
+   ::value         {:hello "json"}
+   :scheme         :https
+   :server-name    "example.com"})
+#_#_=> {:status  200
+        :body    #object [InputStream]
+        ::value  {"world" "json"}
+        :headers {"key" "value"}}
 ```
 
 # Future plans

@@ -9,8 +9,6 @@
   (:import (java.lang AutoCloseable)
            (java.util Map)))
 
-
-
 (defn ^AutoCloseable run-echo-server
   []
   (let [server (-> {::http/routes #{}

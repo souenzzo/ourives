@@ -2,7 +2,8 @@
   (:require [br.com.souenzzo.ourives.client :as client]
             [ring.core.protocols :as ring.proto]
             [clojure.data.json :as json]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [clojure.core.async :as async])
   (:import (java.io ByteArrayOutputStream InputStream)))
 
 (defn parse-request
@@ -36,4 +37,17 @@
             ring-response (client/send client ring-request)]
         (parse-response (merge default-opts
                           (select-keys ring-request [::target ::read-options])
-                          ring-response))))))
+                          ring-response))))
+    (send-async [this ring-request]
+      (let [ex-handler (::client/ex-handler ring-request client/default-ex-handler)
+            return (or (::client/return-chan ring-request)
+                     (async/promise-chan nil ex-handler))
+            ring-request (parse-request (merge default-opts ring-request))
+            promise-ring-response (client/send-async client ring-request)]
+        (async/go
+          (let [ring-response (async/<! promise-ring-response)]
+            (->> (parse-response (merge default-opts
+                                   (select-keys ring-request [::target ::read-options])
+                                   ring-response))
+              (async/>!  return))))
+        return))))

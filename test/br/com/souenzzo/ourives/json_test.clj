@@ -50,7 +50,7 @@
     (with-open [srv (simple-server 8080 (fn [ring-request]
                                           {:body   (-> ring-request
                                                      (assoc ::json/target ::value)
-                                                     json/parse-response
+                                                     json/read-request
                                                      ::value)
                                            :status 200}))]
       (fact
@@ -74,7 +74,7 @@
     (with-open [srv (simple-server 8080 (fn [ring-request]
                                           {:body   (-> ring-request
                                                      (assoc ::json/target ::value)
-                                                     json/parse-response
+                                                     json/read-request
                                                      ::value)
                                            :status 200}))]
       (fact

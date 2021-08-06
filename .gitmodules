@@ -1,0 +1,3 @@
+[submodule "projects/OpenAPI-Specification"]
+	path = projects/OpenAPI-Specification
+	url = git@github.com:OAI/OpenAPI-Specification.git

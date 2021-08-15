@@ -1,3 +1,6 @@
 [submodule "projects/OpenAPI-Specification"]
 	path = projects/OpenAPI-Specification
 	url = git@github.com:OAI/OpenAPI-Specification.git
+[submodule "projects/realworld"]
+	path = projects/realworld
+	url = git@github.com:gothinkster/realworld.git

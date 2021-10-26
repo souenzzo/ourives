@@ -1,4 +1,6 @@
-{:deps {br.com.souenzzo.ourives/client               {:local/root "projects/client"}
-        br.com.souenzzo.ourives/client.java-net-http {:local/root "projects/client.java-net-http"}
-        br.com.souenzzo.ourives/client.pedestal      {:local/root "projects/client.pedestal"}
-        br.com.souenzzo.ourives/java.io              {:local/root "projects/java.io"}}}
+{:paths []
+ :deps  {br.com.souenzzo.ourives/client               {:local/root "projects/client"}
+         br.com.souenzzo.ourives/client.java-net-http {:local/root "projects/client.java-net-http"}
+         br.com.souenzzo.ourives/client.pedestal      {:local/root "projects/client.pedestal"}
+         br.com.souenzzo.ourives/dev                  {:local/root "projects/dev"}
+         br.com.souenzzo.ourives/java.io              {:local/root "projects/java.io"}}}

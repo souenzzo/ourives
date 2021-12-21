@@ -5,8 +5,9 @@
            br.com.souenzzo.ourives/client.pedestal      {:local/root "../client.pedestal"}}
  :aliases {:dev {:extra-paths ["dev" "test"
                                "ring/ring-core/src"]
-                 :jvm-opts    ["-XX:-OmitStackTraceInFastThrow"]
-                 :extra-deps  {midje/midje                              {:mvn/version "1.9.9"}
+                 :jvm-opts    ["-XX:-OmitStackTraceInFastThrow"
+                               "-Dclojure.core.async.go-checking=true"]
+                 :extra-deps  {midje/midje                              {:mvn/version "1.10.5"}
                                org.clojure/clojure                      {:mvn/version "1.10.3"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}
                                io.pedestal/pedestal.service             {:mvn/version "0.5.9"}

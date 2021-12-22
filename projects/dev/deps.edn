@@ -11,6 +11,9 @@
                                org.clojure/clojure                      {:mvn/version "1.10.3"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}
                                commons-io/commons-io                    {:mvn/version "2.11.0"}
+                               org.clojure/tools.logging                {:mvn/version "1.2.3"}
+                               org.apache.httpcomponents/httpcore       {:mvn/version "4.4.15"}
+
 
                                io.pedestal/pedestal.service             {:mvn/version "0.5.9"}
                                org.clojure/data.json                    {:mvn/version "2.3.1"}

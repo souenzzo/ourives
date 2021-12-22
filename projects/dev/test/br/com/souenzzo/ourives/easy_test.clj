@@ -1,20 +1,24 @@
 (ns br.com.souenzzo.ourives.easy-test
+  (:refer-clojure :exclude [send])
   (:require [clojure.test :refer [deftest]]
             [midje.sweet :refer [fact =>]]
             [clojure.core.async :as async]
             [ring.core.protocols]
+            [br.com.souenzzo.ourives.java.io :as ourives.io]
             [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.reader.edn :as edn]
             [ring.util.mime-type :as mime])
-  (:import (java.net.http HttpClient HttpRequest HttpResponse$BodyHandlers HttpClient$Version)
-           (java.net URI ServerSocket Socket)
-           (java.io Closeable BufferedReader)
+  (:import (java.net.http HttpClient HttpRequest HttpResponse$BodyHandlers HttpClient$Version HttpRequest$BodyPublishers)
+           (java.net URI ServerSocket Socket InetSocketAddress)
+           (java.io Closeable BufferedReader BufferedOutputStream OutputStream ByteArrayOutputStream InputStream)
            (java.nio.charset StandardCharsets)
            (java.time Clock ZonedDateTime ZoneOffset)
            (java.time.format DateTimeFormatter)
+           (org.apache.http.impl.io ChunkedOutputStream)
            (org.apache.commons.io.input BoundedInputStream)
-           (org.apache.commons.io.output ChunkedOutputStream)))
+           (org.apache.commons.io.output TeeOutputStream)
+           (java.util.function Supplier)))
 
 (set! *warn-on-reflection* true)
 (def code->reason-phrase
@@ -64,6 +68,35 @@
   #{:body :character-encoding :content-length :content-type :headers :protocol :query-string :remote-addr
     :request-method :scheme :server-name :server-port :ssl-client-cert :uri})
 
+(defn request-line->ring-request
+  [line]
+  (let [[method path protocol] (string/split line #"\s" 3)
+        [uri query-string] (string/split path #"\?" 2)]
+    {:request-method (keyword (string/lower-case method))
+     :uri            uri
+     :query-string   query-string
+     :protocol       protocol}))
+
+(defn wrap-body
+  [{:keys [headers body]
+    :as   request}]
+  (let [request-content-length (some-> headers
+                                 (get "Content-Length")
+                                 Long/parseLong)
+        request-transfer-encoding (some-> (get headers "Transfer-Encoding")
+                                    (string/split #",[\s]{0,}")
+                                    set)]
+    #_(cond-> body
+        (contains? request-transfer-encoding
+          (number? request-content-length)
+          (-> (BoundedInputStream. ^Long request-content-length)
+            (doto (.setPropagateClose false)))))
+    (assoc request :body body)))
+
+(defn wrap-out-response
+  [response out]
+  out)
+
 (defn ^Closeable start
   [{:keys  [server-port handler]
     ::keys [^Clock clock]
@@ -77,54 +110,51 @@
       (map (fn [socket]
              (with-open [^Socket socket socket
                          body (.getInputStream socket)
-                         out (.getOutputStream socket)
-                         brdr (BufferedReader. (io/reader body))]
-               (let [request-line (.readLine brdr)
-                     [method path protocol] (string/split request-line #"\s" 3)
-                     [uri query-string] (string/split path #"\?" 2)
+                         out (.getOutputStream socket)]
+               (let [request-line (ourives.io/is-read-line body)
                      headers (loop [headers {}]
-                               (let [line (.readLine brdr)]
+                               (let [line (ourives.io/is-read-line body)]
                                  (if (string/blank? line)
                                    headers
                                    (let [[k v] (string/split line #":[\s]{0,}")]
                                      (recur (assoc headers
                                               k v))))))
-                     size (some-> headers
-                            (get "Content-Length")
-                            Long/parseLong)
                      {:keys [status headers body]
-                      :as   response} (handler (assoc env
-                                                 :body (if (number? size)
-                                                         (doto (BoundedInputStream. body
-                                                                 ^Long size)
-                                                           (.setPropagateClose false))
-                                                         body)
-                                                 #_:character-encoding
-                                                 #_:content-length
-                                                 #_:content-type
-                                                 :headers headers
-                                                 :protocol protocol
-                                                 :query-string query-string
-                                                 #_#_:remote-addr remote-addr
-                                                 :request-method (keyword (string/lower-case method))
-                                                 :scheme :http
-                                                 #_#_:server-name server-name
-                                                 :server-port (.getLocalPort socket)
-                                                 #_:ssl-client-cert
-                                                 :uri uri))]
+                      :as   response} (-> env
+                                        (merge (request-line->ring-request request-line)
+                                          {:body        body
+                                           :headers     headers
+                                           :remote-addr (.getHostAddress (.getAddress ^InetSocketAddress (.getRemoteSocketAddress socket)))
+                                           :scheme      :http
+                                           :server-name (get headers "Host" (str (.getInetAddress socket)))
+                                           :server-port (.getLocalPort socket)
+                                           #_:character-encoding
+                                           #_:content-length
+                                           #_:content-type
+                                           #_:ssl-client-cert})
+                                        wrap-body
+                                        handler)
+                     response-content-length (when-let [content-length (get headers "Content-Length")]
+                                               (if (number? content-length)
+                                                 content-length
+                                                 (Long/parseLong content-length)))]
                  (.write out (.getBytes (str "HTTP/1.1 " status " "
                                           (code->reason-phrase status)
                                           "\r\n")
                                StandardCharsets/UTF_8))
                  (doseq [[k v] (merge {;; https://httpwg.org/specs/rfc7231.html#header.date
-                                       "Date"              (.format DateTimeFormatter/RFC_1123_DATE_TIME
-                                                             (ZonedDateTime/now clock))
-                                       "Server"            "ourives/dev"}
+                                       "Date"   (.format DateTimeFormatter/RFC_1123_DATE_TIME
+                                                  (ZonedDateTime/now clock))
+                                       "Server" "ourives/dev"}
+                                 (when-not (number? response-content-length)
+                                   #_{"Transfer-Encoding" "chunked"})
                                  headers)]
                    (.write out (.getBytes (str k ": " v "\r\n") StandardCharsets/UTF_8)))
                  (.write out (.getBytes "\r\n" StandardCharsets/UTF_8))
-                 (ring.core.protocols/write-body-to-stream body response out)
-                 (.flush out)))
+                 (with-open [^OutputStream outt (wrap-out-response response out)]
+                   (ring.core.protocols/write-body-to-stream body response outt))
+                 ;; write trailers
+                 #_()))
              socket))
       sockets)
     (future
@@ -136,7 +166,35 @@
         (async/close! sockets)
         (.close server-socket)))))
 
-(deftest hello
+(def *http-client
+  (delay (HttpClient/newHttpClient)))
+
+(defn send
+  [{:keys [uri server-port scheme server-name query-string request-method body]
+    :or   {request-method :get
+           body           (InputStream/nullInputStream)
+           scheme         :http}}]
+  (let [res (.send ^HttpClient @*http-client (-> (str (name scheme) "://" server-name ":" server-port uri (when query-string
+                                                                                                            (str "?" query-string)))
+                                               URI/create
+                                               HttpRequest/newBuilder
+                                               (.version HttpClient$Version/HTTP_1_1)
+                                               (.method (string/upper-case (name request-method))
+                                                 (HttpRequest$BodyPublishers/ofInputStream (reify Supplier
+                                                                                             (get [this] body))))
+                                               .build)
+              (HttpResponse$BodyHandlers/ofString))]
+    {:body    (.body res)
+     :headers (into (sorted-map)
+                (map (fn [[k vs]]
+                       [k (if (next vs)
+                            (vec vs)
+                            (first vs))]))
+                (.map (.headers res)))
+     :status  (.statusCode res)}))
+
+
+(deftest simple-get
   (with-open [server (start {::clock      (proxy [Clock] []
                                             (instant []
                                               (.toInstant #inst"2000"))
@@ -149,35 +207,71 @@
                                                        "Content-Type" (mime/default-mime-types "edn")}
                                              :status  200})
                              :server-port 8080})]
-    (let [client (HttpClient/newHttpClient)
-          res (.send client (-> "http://127.0.0.3:8080/hello?world=42"
-                              URI/create
-                              HttpRequest/newBuilder
-                              (.version HttpClient$Version/HTTP_1_1)
-                              .build)
-                (HttpResponse$BodyHandlers/ofString))]
-      (fact
-        {:body    (edn/read-string (.body res))
-         :headers (into (sorted-map)
-                    (map (fn [[k vs]]
-                           [k (if (next vs)
-                                (vec vs)
-                                (first vs))]))
-                    (.map (.headers res)))
-         :status  (.statusCode res)}
-        => {:body    {:ring-keys  {:headers        {"Content-Length" "0"
-                                                    "Host"           "127.0.0.3"
-                                                    "User-Agent"     "Java-http-client/17.0.1"}
-                                   :protocol       "HTTP/1.1"
-                                   :query-string   "world=42"
-                                   :request-method :get
-                                   :scheme         :http
-                                   :server-port    8080
-                                   :uri            "/hello"}
-                      :slurp-body ""}
-            :headers {"content-type" "application/edn"
-                      "date"         "Sat, 1 Jan 2000 00:00:00 GMT"
-                      "hello"        "42"
-                      "server"       "ourives/dev"}
-            :status  200}))))
+    (fact
+      "Simple HTTP get"
+      (-> (send {:server-name    "app.localhost"
+                 :server-port    8080
+                 :request-method :get
+                 :uri            "/hello"
+                 :query-string   "world=42"})
+        (update :body edn/read-string))
+      => {:body    {:ring-keys  {:headers        {"Content-Length" "0"
+                                                  "Host"           "app.localhost"
+                                                  "User-Agent"     "Java-http-client/17.0.1"}
+                                 :protocol       "HTTP/1.1"
+                                 :query-string   "world=42"
+                                 :request-method :get
+                                 :scheme         :http
+                                 :server-name    "app.localhost"
+                                 :server-port    8080
+                                 :uri            "/hello"}
+                    :slurp-body ""}
+          :headers {"content-type" "application/edn"
+                    "date"         "Sat, 1 Jan 2000 00:00:00 GMT"
+                    "hello"        "42"
+                    "server"       "ourives/dev"}
+          :status  200})))
+
+
+(deftest simple-post
+  (with-open [server (start {::clock      (proxy [Clock] []
+                                            (instant []
+                                              (.toInstant #inst"2000"))
+                                            (getZone [] ZoneOffset/UTC))
+                             :handler     (fn [request]
+                                            {:body    (pr-str
+                                                        {:ring-keys  (select-keys request (disj ring-keys :body))
+                                                         :slurp-body (slurp (:body request))})
+                                             :headers {"Hello"        "42"
+                                                       "Content-Type" (mime/default-mime-types "edn")}
+                                             :status  200})
+                             :server-port 8080})]
+    (fact
+      "Simple HTTP get"
+      (-> (send {:server-name    "app.localhost"
+                 :server-port    8080
+                 :request-method :post
+                 :headers        {"Content-Type" (mime/default-mime-types "txt")}
+                 :body           (io/input-stream (.getBytes "Hello World!"))
+                 :uri            "/hello"
+                 :query-string   "world=42"})
+        (update :body edn/read-string))
+      => {:body    {:ring-keys  {:headers        {"Content-Length" "0"
+                                                  "Host"           "app.localhost"
+                                                  "User-Agent"     "Java-http-client/17.0.1"}
+                                 :protocol       "HTTP/1.1"
+                                 :query-string   "world=42"
+                                 :remote-addr    "127.0.0.1"
+                                 :request-method :post
+                                 :scheme         :http
+                                 :server-name    "app.localhost"
+                                 :server-port    8080
+                                 :uri            "/hello"}
+                    :slurp-body ""}
+          :headers {"content-type" "application/edn"
+                    "date"         "Sat, 1 Jan 2000 00:00:00 GMT"
+                    "hello"        "42"
+                    "server"       "ourives/dev"}
+          :status  200})))
+
 

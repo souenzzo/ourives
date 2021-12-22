@@ -37,7 +37,24 @@
 
 (defn bounded-output-stream
   [os n]
-  os)
+  (let [*n (atom n)]
+    (letfn [(new-len! [x]
+              (swap! *n - x))]
+      (proxy [OutputStream] []
+        (close []
+          (.close os))
+        (write
+          ([b]
+           (.write this b 0 (count b)))
+          ([b off len]
+           (locking os
+             (let [l (- len off)]
+               (if (pos? (new-len! l))
+                 (.write os b off len)
+                 (throw (ex-info "Out of range"
+                          {:cognitect.anomalies/category :cognitect.anomalies/incorrect
+                           :limit                        n
+                           :v                            @*n})))))))))))
 
 (defn ^InputStream chunked-input-stream
   [^InputStream is]

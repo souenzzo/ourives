@@ -7,19 +7,12 @@
                                "ring/ring-core/src"]
                  :jvm-opts    ["-XX:-OmitStackTraceInFastThrow"
                                "-Dclojure.core.async.go-checking=true"]
-                 :extra-deps  {midje/midje                              {:mvn/version "1.10.5"}
-                               org.clojure/clojure                      {:mvn/version "1.10.3"}
-                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}
-                               commons-io/commons-io                    {:mvn/version "2.11.0"}
-                               org.clojure/tools.logging                {:mvn/version "1.2.3"}
-                               org.apache.httpcomponents/httpcore       {:mvn/version "4.4.15"}
-
-
-                               io.pedestal/pedestal.service             {:mvn/version "0.5.9"}
-                               org.clojure/data.json                    {:mvn/version "2.3.1"}
-                               io.pedestal/pedestal.jetty               {:mvn/version "0.5.9"}
-                               org.slf4j/slf4j-simple                   {:mvn/version "2.0.0-alpha1"}
-                               javax.servlet/javax.servlet-api          {:mvn/version "4.0.1"}
-                               jakarta.json/jakarta.json-api            {:mvn/version "2.0.1"}
-                               thheller/shadow-cljs                     {:mvn/version "2.14.5"}
-                               org.clojure/test.check                   {:mvn/version "1.1.0"}}}}}
+                 :extra-deps  {midje/midje                  {:mvn/version "1.10.9"}
+                               org.clojure/clojure          {:mvn/version "1.12.0-alpha4"}
+                               org.clojure/tools.logging    {:mvn/version "1.2.4"}
+                               io.pedestal/pedestal.service {:mvn/version "0.6.0"}
+                               org.clojure/data.json        {:mvn/version "2.4.0"}
+                               io.pedestal/pedestal.jetty   {:mvn/version "0.6.0"}
+                               org.slf4j/slf4j-simple       {:mvn/version "2.0.9"}
+                               thheller/shadow-cljs         {:mvn/version "2.14.5"}
+                               org.clojure/test.check       {:mvn/version "1.1.0"}}}}}

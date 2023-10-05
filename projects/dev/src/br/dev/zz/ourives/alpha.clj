@@ -1,6 +1,8 @@
 (ns br.dev.zz.ourives.alpha
   (:require [clojure.java.io :as io]
-            [clojure.string :as string])
+            [clojure.string :as string]
+            [io.pedestal.http :as http]
+            [io.pedestal.interceptor.chain :as chain])
   (:import (java.io BufferedReader)
            (java.lang AutoCloseable)
            (java.net InetSocketAddress ServerSocket SocketException)))
@@ -71,3 +73,13 @@
     (start-accept! (assoc opts
                      :server-socket server-socket))
     server-socket))
+
+(defn chain-provider
+  [{::http/keys [interceptors]
+    :as         service-map}]
+  (assoc service-map
+    ::handler (fn [request]
+                (:response (chain/execute (assoc service-map
+                                            :request (merge {:path-info (:uri request)}
+                                                       request))
+                             interceptors)))))

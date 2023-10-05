@@ -9,12 +9,10 @@
 
 
 (deftest pedestal-provider
-  (let [{::ourives/keys [handler]} (-> {::http/port           8080
-                                        ::http/routes         #{["/" :get (fn [_]
+  (let [{::ourives/keys [handler]} (-> {::http/routes         #{["/" :get (fn [_]
                                                                             {:body   "hello"
                                                                              :status 200})
                                                                  :route-name :hello]}
-                                        ::http/join?          false
                                         ::http/chain-provider ourives/chain-provider}
                                      http/create-provider)]
     (is (= {:body    "hello"
@@ -28,6 +26,27 @@
             :status  200}
           (handler {:request-method :get
                     :uri            "/"})))))
+
+(deftest pedestal-type
+  (let [http-client (HttpClient/newHttpClient)
+        service-map (-> ourives/service-map
+                      (assoc ::http/port 8080
+                             ::http/routes #{["/" :get (fn [_]
+                                                         {:body   "hello"
+                                                          :status 200})
+                                              :route-name :hello]}
+                             ::http/join? false)
+                      http/default-interceptors
+                      http/create-server
+                      http/start)]
+    (try
+      (is (= "hello"
+            (.body (.send http-client
+                     (.build (HttpRequest/newBuilder (URI/create "http://127.0.0.1:8080/")))
+                     (HttpResponse$BodyHandlers/ofString)))))
+      (finally
+        (http/stop service-map)))))
+
 
 
 (deftest hello

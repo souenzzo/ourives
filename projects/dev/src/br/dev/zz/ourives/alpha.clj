@@ -1,4 +1,5 @@
 (ns br.dev.zz.ourives.alpha
+  (:refer-clojure :exclude [type])
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [io.pedestal.http :as http]
@@ -83,3 +84,20 @@
                                             :request (merge {:path-info (:uri request)}
                                                        request))
                              interceptors)))))
+
+(defn type
+  [{::keys [handler]} {:keys [port]}]
+  (let [*server (delay (doto (ServerSocket.)
+                         (.bind (InetSocketAddress. port))))]
+    {:server   *server
+     :start-fn (fn []
+                 (start-accept! {:server-socket @*server
+                                 :handler       handler}))
+
+     :stop-fn  (fn []
+                 (.close ^AutoCloseable @*server))}))
+
+
+(def service-map
+  {::http/chain-provider chain-provider
+   ::http/type           type})

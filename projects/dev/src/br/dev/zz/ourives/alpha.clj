@@ -78,15 +78,19 @@
 (defn chain-provider
   [{::http/keys [interceptors]
     :as         service-map}]
-  (assoc service-map
-    ::handler (fn [request]
-                (:response (chain/execute (assoc service-map
-                                            :request (merge {:path-info (:uri request)}
-                                                       request))
-                             interceptors)))))
+  (letfn [(handler [request]
+            (-> service-map
+              (assoc #_#_::handler handler
+                     :request (merge {:path-info (:uri request)}
+                                request))
+              (chain/execute interceptors)
+              :response))]
+    (assoc service-map ::handler handler)))
+
 
 (defn type
-  [{::keys [handler]} {:keys [port]}]
+  [{::keys [handler] :as x} {:keys [port]}]
+  (def _x x)
   (let [*server (delay (doto (ServerSocket.)
                          (.bind (InetSocketAddress. port))))]
     {:server   *server
@@ -95,8 +99,8 @@
                                  :handler       handler}))
 
      :stop-fn  (fn []
-                 (.close ^AutoCloseable @*server))}))
-
+                 (when (realized? *server)
+                   (.close ^AutoCloseable @*server)))}))
 
 (def service-map
   {::http/chain-provider chain-provider

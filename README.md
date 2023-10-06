@@ -96,10 +96,8 @@ Usage example:
 
 ## Clients
 
-- `br.com.souenzzo.ourives/client.java-net-socket`: A pure-clojure HTTP client from java.net.Socket's
-- `br.com.souenzzo.ourives/client.nodejs`: An implementation over `http` and `https` packages in nodejs.
-- `br.com.souenzzo.ourives/client.fetch`: An implementation over `window.fetch` browser API
-- `br.com.souenzzo.ourives/client.apache-http-client`: Why not?!
+- `br.com.souenzzo.ourives/client.java-net-http`: A pure-clojure HTTP client from java.net.HttpClient's
+- `br.com.souenzzo.ourives/client.fetch`: An implementation over `window.fetch` browser and nodejs API
 
 Some implementations, like nodejs and browser, will not have the `send` sync method
 

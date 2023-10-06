@@ -9,9 +9,10 @@
 
 
 (deftest pedestal-provider
-  (let [{::ourives/keys [handler]} (-> {::http/routes         #{["/" :get (fn [_]
-                                                                            {:body   "hello"
-                                                                             :status 200})
+  (let [{::ourives/keys [handler]} (-> {::http/routes         #{["/" :get [{:enter (fn [ctx]
+                                                                                     (def _ctx ctx)
+                                                                                     (assoc ctx :response {:body   "hello"
+                                                                                                           :status 200}))}]
                                                                  :route-name :hello]}
                                         ::http/chain-provider ourives/chain-provider}
                                      http/create-provider)]
@@ -46,8 +47,6 @@
                      (HttpResponse$BodyHandlers/ofString)))))
       (finally
         (http/stop service-map)))))
-
-
 
 (deftest hello
   (let [http-client (HttpClient/newHttpClient)]

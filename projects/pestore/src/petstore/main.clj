@@ -1,6 +1,7 @@
 (ns petstore.main
   (:require [clojure.data.json :as json]
-            [br.dev.zz.ourives.dynamic-router :as dynamic-router]))
+            [br.dev.zz.ourives.dynamic-router :as dynamic-router]
+            [clojure.java.io :as io]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,6 +32,22 @@
   {:headers {"Content-Type" "application/json"}
    :body    (json/write-str @*pets)
    :status  200})
+(defmethod petstore-operations "addPet"
+  [{::keys [*pets]
+    :keys  [body]}]
+  (let [{:keys [name type]} (some-> body io/reader (json/read :key-fn keyword))
+        pet (last (swap! *pets
+                    (fn [pets]
+                      (conj pets {:id   (count pets)
+                                  :name name
+                                  :type type}))))]
+    {:headers {"Content-Type" "application/json"}
+     :body    (json/write-str pet)
+     :status  200}))
+
+#_(defmethod petstore-operations "deletePet" [request] {:status 503})
+
+#_(defmethod petstore-operations "find pet by id" [request] {:status 503})
 
 (defn create
   []

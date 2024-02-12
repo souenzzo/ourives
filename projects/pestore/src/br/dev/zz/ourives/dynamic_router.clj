@@ -13,7 +13,7 @@
                         (as-> % (with-open [baos %]
                                   (rcp/write-body-to-stream body ring-response baos)
                                   baos))
-                        (ByteArrayOutputStream/toByteArray))
+                        ByteArrayOutputStream/toByteArray)
         {:strs [paths]} (-> response-body io/reader json/read)
         all-operations (for [[path path-item] paths
                              [method operation] path-item]
@@ -25,6 +25,7 @@
                                                   ["paths" path method])))
                           :operation        operation})
         operations-by-method (group-by :operation-method all-operations)]
+    (def _all-operations all-operations)
     (fn [{:keys [uri request-method] :as request}]
       (let [operations (get operations-by-method request-method)
             {:keys [operation-id]} (some (fn [{:keys [path]

@@ -10,8 +10,7 @@
            (java.util Optional)
            (java.util.function BiPredicate)))
 
-(defprotocol ISendable
-  (send [this ring-request]))
+(defprotocol ISendable (send [this ring-request]))
 
 (extend-protocol ISendable
   HttpClient
@@ -19,15 +18,16 @@
                :or   {headers        {}
                       scheme         :http
                       uri            "/"
+                      port           -1
                       request-method :get}}]
-    (let [http-response (.send this (proxy [HttpRequest] []
-                                      (headers [] (HttpHeaders/of headers (reify BiPredicate (test [this _ _] true))))
-                                      (timeout [] (Optional/empty))
-                                      (expectContinue [] false)
-                                      (version [] (Optional/empty))
-                                      (bodyPublisher [] (Optional/empty))
-                                      (uri [] (URI. (name scheme) nil (or server-name remote-addr) port uri query-string nil))
-                                      (method [] (-> request-method name string/upper-case)))
+    (let [http-response (HttpClient/send this (proxy [HttpRequest] []
+                                                (headers [] (HttpHeaders/of headers (reify BiPredicate (test [this _ _] true))))
+                                                (timeout [] (Optional/empty))
+                                                (expectContinue [] false)
+                                                (version [] (Optional/empty))
+                                                (bodyPublisher [] (Optional/empty))
+                                                (uri [] (URI. (name scheme) nil (or server-name remote-addr) port uri query-string nil))
+                                                (method [] (-> request-method name string/upper-case)))
                           (HttpResponse$BodyHandlers/ofInputStream))]
       {:headers (into {}
                   (map (fn [[k v]]
@@ -43,7 +43,8 @@
   (let [server (jetty/run-jetty (petstore/create)
                  {:port  0
                   :join? false})
-        http-client (HttpClient/newHttpClient)]
+        http-client (HttpClient/newHttpClient)
+        uri (.getURI server)]
     (try
       (is (= {:headers {"content-type" "application/json"}
               :body    []
@@ -51,7 +52,8 @@
             (-> (send http-client
                   {:server-name "localhost"
                    :uri         "/api/pets"
-                   :port        (.getPort (.getURI server))})
+                   :scheme      (URI/getScheme uri)
+                   :port        (URI/getPort uri)})
               (update :body slurp)
               (update :headers dissoc "date" "server" "transfer-encoding")
               (update :body json/read-str :key-fn keyword)

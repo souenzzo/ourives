@@ -1,15 +1,14 @@
 (ns petstore.main-test
   (:refer-clojure :exclude [send])
-  (:require [clojure.string :as string]
+  (:require [clojure.data.json :as json]
+            [clojure.string :as string]
             [clojure.test :refer [deftest is]]
+            [petstore.main :as petstore]
             [ring.adapter.jetty :as jetty])
   (:import (java.net URI)
            (java.net.http HttpClient HttpHeaders HttpRequest HttpResponse$BodyHandlers)
            (java.util Optional)
            (java.util.function BiPredicate)))
-
-(set! *warn-on-reflection* true)
-
 
 (defprotocol ISendable
   (send [this ring-request]))
@@ -27,10 +26,8 @@
                                       (expectContinue [] false)
                                       (version [] (Optional/empty))
                                       (bodyPublisher [] (Optional/empty))
-                                      (uri []
-                                        (URI. (name scheme) nil (or server-name remote-addr) port uri query-string nil))
-                                      (method []
-                                        (-> request-method name string/upper-case)))
+                                      (uri [] (URI. (name scheme) nil (or server-name remote-addr) port uri query-string nil))
+                                      (method [] (-> request-method name string/upper-case)))
                           (HttpResponse$BodyHandlers/ofInputStream))]
       {:headers (into {}
                   (map (fn [[k v]]
@@ -42,22 +39,24 @@
        :status  (.statusCode http-response)})))
 
 
-(defn petstore-handler
-  [ring-request]
-  {:status 202})
-
 (deftest hello
-  (let [server (jetty/run-jetty petstore-handler {:port  0
-                                                  :join? false})]
+  (let [server (jetty/run-jetty (petstore/create)
+                 {:port  0
+                  :join? false})
+        http-client (HttpClient/newHttpClient)]
     (try
-      (is (= {:headers {"content-length" "0"}
-              :body    "",
-              :status  202}
-            (-> (send (HttpClient/newHttpClient)
+      (is (= {:headers {"content-type" "application/json"}
+              :body    []
+              :status  200}
+            (-> (send http-client
                   {:server-name "localhost"
+                   :uri         "/api/pets"
                    :port        (.getPort (.getURI server))})
               (update :body slurp)
-              (update :headers dissoc "date" "server")
+              (update :headers dissoc "date" "server" "transfer-encoding")
+              (update :body json/read-str :key-fn keyword)
               (doto clojure.pprint/pprint))))
       (finally
         (.stop server)))))
+
+

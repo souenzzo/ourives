@@ -5,6 +5,8 @@
             [ring.core.protocols :as rcp])
   (:import (java.io ByteArrayOutputStream)))
 
+(set! *warn-on-reflection* true)
+
 (defn make-router
   [handler request]
   (let [{:keys [body] :as ring-response} (handler (assoc request

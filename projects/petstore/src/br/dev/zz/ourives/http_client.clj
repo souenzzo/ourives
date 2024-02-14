@@ -3,7 +3,7 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as string])
   (:import (java.net URI)
-           (java.net.http HttpClient HttpHeaders HttpRequest HttpRequest$BodyPublishers HttpResponse$BodyHandlers)
+           (java.net.http HttpClient HttpClient$Version HttpHeaders HttpRequest HttpRequest$BodyPublishers HttpResponse$BodyHandlers)
            (java.util Optional)
            (java.util.function BiPredicate)))
 
@@ -19,20 +19,25 @@
 
 (extend-protocol ISendable
   HttpClient
-  (send [this {:keys [request-method scheme server-name port uri query-string remote-addr headers body]
-               :or   {headers {}
-                      port    -1}
-               :as   ring-request}]
-    (let [http-response (HttpClient/send this (proxy [HttpRequest] []
-                                                (headers [] (HttpHeaders/of headers (reify BiPredicate (test [this _ _] true))))
+  (send [this {:keys [request-method scheme server-name port uri query-string remote-addr headers body protocol]
+               :or   {headers {} port -1}}]
+    (let [uri (URI. (name scheme) nil (or server-name remote-addr) port uri query-string nil)
+          method (-> request-method name string/upper-case)
+          headers (HttpHeaders/of headers (reify BiPredicate (test [this _ _] true)))
+          version (if protocol
+                    (Optional/of (HttpClient$Version/valueOf (string/replace protocol #"[\./]" "_")))
+                    (Optional/empty))
+          body-publisher (if body
+                           (Optional/of (HttpRequest$BodyPublishers/ofInputStream (delay body)))
+                           (Optional/empty))
+          http-response (HttpClient/send this (proxy [HttpRequest] []
+                                                (headers [] headers)
                                                 (timeout [] (Optional/empty))
                                                 (expectContinue [] false)
-                                                (version [] (Optional/empty))
-                                                (bodyPublisher [] (if body
-                                                                    (Optional/of (HttpRequest$BodyPublishers/ofInputStream (delay body)))
-                                                                    (Optional/empty)))
-                                                (uri [] (URI. (name scheme) nil (or server-name remote-addr) port uri query-string nil))
-                                                (method [] (-> request-method name string/upper-case)))
+                                                (version [] version)
+                                                (bodyPublisher [] body-publisher)
+                                                (uri [] uri)
+                                                (method [] method))
                           (HttpResponse$BodyHandlers/ofInputStream))]
       {:headers (into {}
                   (map (fn [[k v]]

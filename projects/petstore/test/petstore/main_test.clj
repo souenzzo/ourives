@@ -28,30 +28,36 @@
                                            :body (-> ring-response :body io/reader (json/read :key-fn keyword)))
                                          ring-response)))})))
 
-(def with-defaults
+(def with-on-uri
   (-> {}
-    (with-meta `{http-client/send ~(fn [{::keys [http-client defaults]} ring-request]
-                                     (http-client/send http-client (merge defaults ring-request)))})))
+    (with-meta `{http-client/send ~(fn [{::keys [http-client uri]} ring-request]
+                                     (http-client/send http-client (merge {:request-method :get
+                                                                           :server-name    (URI/getHost uri)
+                                                                           :scheme         (URI/getScheme uri)
+                                                                           :port           (URI/getPort uri)} ring-request)))})))
+
+(def without-headers
+  (-> {}
+    (with-meta `{http-client/send ~(fn [{::keys [http-client headers]} ring-request]
+                                     (-> (http-client/send http-client ring-request)
+                                       (update :headers #(apply dissoc % headers))))})))
 
 (deftest hello
   (let [server (jetty/run-jetty (petstore/create)
                  {:port  0
                   :join? false})
-        uri (.getURI server)
-        http-client (assoc with-defaults ::http-client (HttpClient/newHttpClient)
-                                         ::defaults {:request-method :get
-                                                     :server-name    (URI/getHost uri)
-                                                     :scheme         (URI/getScheme uri)
-                                                     :port           (URI/getPort uri)})
-        http-client (assoc with-json-io ::http-client http-client)]
+        http-client (assoc with-on-uri ::http-client (HttpClient/newHttpClient)
+                                       ::uri (.getURI server))
+        http-client (assoc with-json-io ::http-client http-client)
+        http-client (assoc without-headers ::http-client http-client
+                                           ::headers ["date" "server" "transfer-encoding"])]
     (try
       (is (= {:headers {"content-type" "application/json"}
               :body    []
               :status  200}
             (-> http-client
               (http-client/send {:uri "/api/pets"})
-              (update :headers dissoc "date" "server" "transfer-encoding")
-              (doto clojure.pprint/pprint))))
+              #_(doto clojure.pprint/pprint))))
       (is (= {:headers {"content-type" "application/json"},
               :body    {:id   0
                         :name "jake"
@@ -62,7 +68,6 @@
                                  :body           {:name "jake"
                                                   :type :dog}
                                  :request-method :post})
-              (update :headers dissoc "date" "server" "transfer-encoding")
               #_(doto clojure.pprint/pprint))))
       (is (= {:body    [{:id   0
                          :name "jake"
@@ -71,7 +76,6 @@
               :status  200}
             (-> http-client
               (http-client/send {:uri "/api/pets"})
-              (update :headers dissoc "date" "server" "transfer-encoding")
               #_(doto clojure.pprint/pprint))))
 
       (finally

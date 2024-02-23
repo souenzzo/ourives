@@ -1,6 +1,8 @@
 {:paths   ["src"]
  :deps    {ring/ring-jetty-adapter {:mvn/version "1.11.0"}
            org.slf4j/slf4j-simple  {:mvn/version "2.0.12"}
+           juxt/reap               {:git/url "https://github.com/juxt/reap.git"
+                                    :git/sha "42f4942ea37f5f4e965a6f75cdd7c130023bd924"}
            org.clojure/clojure     {:mvn/version "1.12.0-alpha7"}}
  :aliases {:test-runner {:extra-deps {io.github.cognitect-labs/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
                                                                             :git/sha "dfb30dd6605cb6c0efc275e1df1736f6e90d4d73"}}

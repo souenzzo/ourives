@@ -45,13 +45,30 @@
      :body    (json/write-str pet)
      :status  200}))
 
-#_(defmethod petstore-operations "deletePet" [request] {:status 503})
+(defmethod petstore-operations "deletePet"
+  [{::keys                [*pets]
+    ::dynamic-router/keys [path-params]}]
+  (let [ids-to-remove (-> path-params :id parse-long hash-set)
+        [old-pets _] (swap-vals! *pets (partial into []
+                                         (remove (comp ids-to-remove :id))))]
+    (if (contains? old-pets (first ids-to-remove))
+      {:status 204}
+      {:status 404})))
 
-#_(defmethod petstore-operations "find pet by id" [request] {:status 503})
+(defmethod petstore-operations "find pet by id"
+  [{::keys                [*pets]
+    ::dynamic-router/keys [path-params]}]
+  (if-let [pet (-> path-params :id parse-long
+                 (->> (get @*pets)))]
+    {:headers {"Content-Type" "application/json"}
+     :body    (json/write-str pet)
+     :status  200}
+    {:status 404}))
 
 (defn create
   []
   (let [*pets (atom [])
-        handler (dynamic-router/wrap-router petstore-operations)]
+        handler (dynamic-router/wrap-router
+                  {::dynamic-router/ring-handler petstore-operations})]
     (fn [request]
       (handler (assoc request ::*pets *pets)))))

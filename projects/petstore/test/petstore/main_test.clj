@@ -56,7 +56,7 @@
               :body    []
               :status  200}
             (-> http-client
-              (http-client/send {:uri "/api/pets"})
+              (http-client/send {:uri "/pets"})
               #_(doto clojure.pprint/pprint))))
       (is (= {:headers {"content-type" "application/json"},
               :body    {:id   0
@@ -64,10 +64,18 @@
                         :type "dog"},
               :status  200}
             (-> http-client
-              (http-client/send {:uri            "/api/pets"
+              (http-client/send {:uri            "/pets"
                                  :body           {:name "jake"
                                                   :type :dog}
                                  :request-method :post})
+              #_(doto clojure.pprint/pprint))))
+      (is (= {:headers {"content-type" "application/json"},
+              :body    {:id   0
+                        :name "jake"
+                        :type "dog"},
+              :status  200}
+            (-> http-client
+              (http-client/send {:uri "/pets/0"})
               #_(doto clojure.pprint/pprint))))
       (is (= {:body    [{:id   0
                          :name "jake"
@@ -75,10 +83,19 @@
               :headers {"content-type" "application/json"}
               :status  200}
             (-> http-client
-              (http-client/send {:uri "/api/pets"})
+              (http-client/send {:uri "/pets"})
               #_(doto clojure.pprint/pprint))))
-
+      (is (= 204
+            (-> http-client
+              (http-client/send {:uri            "/pets/0"
+                                 :request-method :delete})
+              :status
+              #_(doto clojure.pprint/pprint))))
+      (is (= {:body    []
+              :headers {"content-type" "application/json"}
+              :status  200}
+            (-> http-client
+              (http-client/send {:uri "/pets"})
+              #_(doto clojure.pprint/pprint))))
       (finally
         (.stop server)))))
-
-
